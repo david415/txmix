@@ -32,7 +32,7 @@ def generate_node_keypair(rand_reader):
     return public_key, private_key
 
 
-@zope.interface.implementer(IMixPrivateKey)
+@implementer(IMixPrivateKey)
 class SphinxNodeKeyState:
 
     def __init__(self, private_key):
@@ -92,7 +92,7 @@ class DummyTransport(object):
         self.sent.append((addr, message))
 
 
-@zope.interface.implementer(IMixPKI)
+@implementer(IMixPKI)
 class DummyPKI(object):
 
     def __init__(self):

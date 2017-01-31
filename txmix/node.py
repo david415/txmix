@@ -1,6 +1,9 @@
 
 from __future__ import print_function
 
+from twisted.internet.interfaces import IPushProducer
+from zope.interface.declarations import implementer
+
 from sphinxmixcrypto import sphinx_packet_unwrap, GroupCurve25519
 from txmix.common import DEFAULT_CRYPTO_PARAMETERS, sphinx_packet_encode, sphinx_packet_decode
 
@@ -22,6 +25,7 @@ class NodeFactory(object):
         return node_protocol
 
 
+@implementer(IPushProducer)
 class NodeProtocol(object):
     """
     i am a mix net node protocol responsible for decryption
@@ -35,6 +39,19 @@ class NodeProtocol(object):
         self.pki = pki
         self.transport = transport
 
+    # IPushProducer methods
+
+    def pauseProducing(self):
+        pass
+
+    def resumeProducing(self):
+        pass
+
+    def stopProducing(self):
+        pass
+
+    # mix methods
+
     def make_connection(self, transport):
         self.transport = transport
 
@@ -44,7 +61,7 @@ class NodeProtocol(object):
         and return the results
         """
         sphinx_packet = sphinx_packet_decode(self.params, raw_sphinx_packet)
-        return sphinx_packet_unwrap(self.params, self.replay_cache, self.key_state, sphinx_packet)
+        unwrapped = sphinx_packet_unwrap(self.params, self.replay_cache, self.key_state, sphinx_packet)
 
     def sphinx_packet_send(self, mix_id, sphinx_packet):
         """

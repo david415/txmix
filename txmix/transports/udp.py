@@ -7,7 +7,7 @@ from twisted.internet.protocol import DatagramProtocol
 from txmix import IMixTransport
 
 
-@implementer(IMixTransport)
+@implementer(IMixTransport, IConsumer, IPushProducer)
 class UDPTransport(DatagramProtocol):
     """
     implements the IMixTransport interface
@@ -16,14 +16,14 @@ class UDPTransport(DatagramProtocol):
 
     def __init__(self, reactor):
         self.reactor = reactor
-        self.received_callback = None
+        self.consumer = None
 
-    def start(self, addr, nodeProtocol):
+    def make_connection(self, addr, nodeProtocol):
         """
         make this transport begin listening on the specified interface and UDP port
         interface must be an IP address
         """
-        self.received_callback = nodeProtocol.messageReceived
+        self.consumer = nodeProtocol
         interface, port = addr
         self.reactor.listenUDP(port, self, interface=interface)
 
@@ -34,8 +34,29 @@ class UDPTransport(DatagramProtocol):
         """
         self.transport.write(message, addr)
 
-    def received(self, message):
+    # IConsumer methods
+
+    def registerProducer(self, producer, streaming):
+        assert streaming
+        self.consumer = producer
+
+    def unregisterProducer(self):
+        pass
+
+    def write(self, data):
+        addr, message = data
+        self.send(addr, message)
+
+    # IPushProducer methods
+
+    def pauseProducing(self):
+        pass
+
+    def resumeProducing(self):
+        pass
+
+    def datagramReceived(self, datagram, addr):
         """
         i am called by the twisted reactor when our transport receives a UDP packet
         """
-        self.received_callback(message)
+        self.consumer.write(datagram)
