@@ -1,30 +1,34 @@
 
 from __future__ import print_function
 
+import attr
 from zope.interface import implementer
+from twisted.internet.interfaces import IReactorUDP
 from twisted.internet.protocol import DatagramProtocol
 
 from txmix import IMixTransport
 
 
-@implementer(IMixTransport, IConsumer, IPushProducer)
-class UDPTransport(DatagramProtocol):
+@implementer(IMixTransport)
+@attr.s()
+class UDPTransport(DatagramProtocol, object):
     """
     implements the IMixTransport interface
     """
     name = "udp"
+    reactor = attr.ib(validator=attr.validators.provides(IReactorUDP))
+    addr = attr.ib(validator=attr.validators.instance_of(tuple))
 
-    def __init__(self, reactor):
-        self.reactor = reactor
-        self.consumer = None
+    def register_protocol(self, protocol):
+        # XXX todo: assert that protocol provides the appropriate interface
+        self.protocol = protocol
 
-    def make_connection(self, addr, nodeProtocol):
+    def start(self):
         """
         make this transport begin listening on the specified interface and UDP port
         interface must be an IP address
         """
-        self.consumer = nodeProtocol
-        interface, port = addr
+        interface, port = self.addr
         self.reactor.listenUDP(port, self, interface=interface)
 
     def send(self, addr, message):
@@ -34,29 +38,8 @@ class UDPTransport(DatagramProtocol):
         """
         self.transport.write(message, addr)
 
-    # IConsumer methods
-
-    def registerProducer(self, producer, streaming):
-        assert streaming
-        self.consumer = producer
-
-    def unregisterProducer(self):
-        pass
-
-    def write(self, data):
-        addr, message = data
-        self.send(addr, message)
-
-    # IPushProducer methods
-
-    def pauseProducing(self):
-        pass
-
-    def resumeProducing(self):
-        pass
-
     def datagramReceived(self, datagram, addr):
         """
         i am called by the twisted reactor when our transport receives a UDP packet
         """
-        self.consumer.write(datagram)
+        self.protocol.sphinx_packet_received(datagram)
